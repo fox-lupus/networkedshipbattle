@@ -41,7 +41,7 @@ for _ in range(rowSize ** 2):
 # find pos on list from row and colum input
 def findPos(row, col):
     out = ((row - 1) * rowSize) + col - 1
-    print(out)
+    print(f"pos from findpos is {out}")
     return out
 
 class Player:
@@ -69,9 +69,14 @@ class Game:
             if(self.listOfPlayers[i] == player):
                 return self.listOfPlayers[i]
 
-    def placeShip(self, row, col, player):
+    def placeShip(self, row, col, player, dir):
         if (player.board[findPos(row, col)] != 'O'):
             player.board[findPos(row, col)] = 'O'
+            print("got to place ship")
+            if (dir == "N"):
+                player.board[findPos(row - 1, col)] = 'O'
+            elif (dir == "E"):
+                player.board[findPos(row, col + 1)] = 'O'
         else:
             print("aready ship taken error")
 
@@ -80,8 +85,6 @@ class Game:
             player.board[findPos(row, col)] = 'X'
         elif (player.board[findPos(row, col)] == '.'):
             player.board[findPos(row, col)] = '*'
-
-print(map)
 
 # send board to client program
 def sendBoard(player, con):
@@ -95,17 +98,23 @@ def handleClient(con, game, player):
         difPlay = game.otherPlayer(player)
 
         sendBoard(difPlay, con)
-
+        print(player.board)
         # player places ships
         if (player.placedShips == False):
-            for _ in range(numOfShips):
-                p1 = json.loads(con.recv(HEADERSIZE))
-                p2 = json.loads(con.recv(HEADERSIZE))
-                game.placeShip(int(p1), int(p2), player)
-                sendBoard(difPlay, con)
-            player.placedShips = True
+            print(player.placedShips)
+            for a in range(2):
+                print("start")
+                p1 = con.recv(HEADERSIZE)
+                print("got row")
+                p2 = con.recv(HEADERSIZE)
+                print("got col")
+                direct = con.recv(HEADERSIZE)
+                print("got dir")
 
-        sendBoard(difPlay, con)
+                game.placeShip(json.loads(p1), json.loads(p2), player, json.loads(direct))
+                sendBoard(player, con)
+                print("one loop")
+        player.placedShips = True
 
         m1 = json.loads(con.recv(HEADERSIZE))
         m2 = json.loads(con.recv(HEADERSIZE))
