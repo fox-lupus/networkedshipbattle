@@ -16,11 +16,11 @@ s.connect(('localhost', port))
 
 gameboard = []
 
-def printBoard(br):
+def printBoard(br, id):
     print(fr"""
     1   2   3   4   5   6   7   8   9
 1 | {br[0]} | {br[1]} | {br[2]} | {br[3]} | {br[4]} | {br[5]} | {br[6]} | {br[7]} | {br[8]} |
-2 | {br[9]} | {br[10]} | {br[11]} | {br[12]} | {br[13]} | {br[14]} | {br[15]} | {br[16]} | {br[17]} |
+2 | {br[9]} | {br[10]} | {br[11]} | {br[12]} | {br[13]} | {br[14]} | {br[15]} | {br[16]} | {br[17]} | {id} board
 3 | {br[18]} | {br[19]} | {br[20]} | {br[21]} | {br[22]} | {br[23]} | {br[24]} | {br[25]} | {br[26]} |
 4 | {br[27]} | {br[28]} | {br[29]} | {br[30]} | {br[31]} | {br[32]} | {br[33]} | {br[34]} | {br[35]} |
 5 | {br[36]} | {br[37]} | {br[38]} | {br[39]} | {br[40]} | {br[41]} | {br[42]} | {br[43]} | {br[44]} |   /  N  \
@@ -49,80 +49,101 @@ def safeInput(prompt):
 def safeInputchar(prompt):
     while True:
             res = input(prompt)
-            print(f"res is {res}")
+            # print(f"res is {res}")
             if (ord(res) - 96 == 5 or ord(res) - 96 == 14):
                 res = res.upper()
                 return res
             print("enter N or E")
+# def safePlaceShip(board):
+#     while True:
+#
+#         print("placeship")
+#         row = safeInput("enter row")
+#         printBoard(board)
+#         col = safeInput("enter colum")
+#         printBoard(board)
+#         dir = safeInputchar("enter cardinal direction")
+#         dir = dir.upper()
+#         printBoard(board)
+#
+#         row = json.dumps(row)
+#         col = json.dumps(col)
+#         dir = json.dumps(dir)
+#
+#         print(dir)
+#         if (board[findPos(int(row), int(col))] != 'O'):
+#             board[findPos(int(row), int(col))] = 'O'
+#             if (dir == "N"):
+#                 board[findPos(int(row) - 1, int(col))] = 'O'
+#                 s.send(bytes(row, encoding="utf-8"))
+#                 s.send(bytes(col, encoding="utf-8"))
+#                 s.send(bytes(dir, encoding="utf-8"))
+#                 break
+#             elif (dir == "E"):
+#                 board[findPos(int(row), int(col) + 1)] = 'O'
+#                 s.send(bytes(row, encoding="utf-8"))
+#                 s.send(bytes(col, encoding="utf-8"))
+#                 s.send(bytes(dir, encoding="utf-8"))
+#                 break
 
-def safePlaceShip(board):
-    while True:
+def getBoard(id, sd):
+    board = sd.recv(HEADERSIZE)
+    print(board)
+    board = json.loads(board)
 
-        print("placeship")
-        row = safeInput("enter row")
-        printBoard(board)
-        col = safeInput("enter colum")
-        printBoard(board)
-        dir = safeInputchar("enter cardinal direction")
-        dir = dir.upper()
-        printBoard(board)
+    printBoard(board, id)
 
-        row = json.dumps(row)
-        col = json.dumps(col)
-        dir = json.dumps(dir)
+dumblock = False
 
-        print(dir)
-        if (board[findPos(int(row), int(col))] != 'O'):
-            board[findPos(int(row), int(col))] = 'O'
-            if (dir == "N"):
-                board[findPos(int(row) - 1, int(col))] = 'O'
-                s.send(bytes(row, encoding="utf-8"))
-                s.send(bytes(col, encoding="utf-8"))
-                s.send(bytes(dir, encoding="utf-8"))
-                break
-            elif (dir == "E"):
-                board[findPos(int(row), int(col) + 1)] = 'O'
-                s.send(bytes(row, encoding="utf-8"))
-                s.send(bytes(col, encoding="utf-8"))
-                s.send(bytes(dir, encoding="utf-8"))
-                break
 while True:
-    board = json.loads(s.recv(HEADERSIZE))
-    printBoard(board)
+
+    while dumblock == False:
+        dumblock = json.loads(s.recv(HEADERSIZE))
+
+    getBoard("your", s)
 
     if (placedShips == False):
         for a in range(2):
             print("placeship")
             row = safeInput("enter row")
-            printBoard(board)
             col = safeInput("enter colum")
-            printBoard(board)
             dir = safeInputchar("enter cardinal direction")
-            printBoard(board)
 
-            time.sleep(.1)
-            row = json.dumps(row)
-            s.send(bytes(row, encoding="utf-8"))
-            time.sleep(.1)
-            col = json.dumps(col)
-            s.send(bytes(col, encoding="utf-8"))
-            time.sleep(.1)
-            dir = json.dumps(dir)
-            s.send(bytes(dir, encoding="utf-8"))
+            time.sleep(.01)
+            s.send(bytes(json.dumps(row), encoding="utf-8"))
 
-            board = json.loads(s.recv(HEADERSIZE))
-            printBoard(board)
+            time.sleep(.01)
+            s.send(bytes(json.dumps(col), encoding="utf-8"))
+
+            time.sleep(.01)
+            s.send(bytes(json.dumps(dir), encoding="utf-8"))
+
+            getBoard("your", s)
+    else:
+        getBoard("other player", s)
+
+        guess = safeInput("enter row")
+        s.send(bytes(json.dumps(guess), encoding="utf-8"))
+
+        guess = safeInput("enter colum")
+        s.send(bytes(json.dumps(guess), encoding="utf-8"))
+
+        getBoard("other player", s)
+
     placedShips = True
 
-    guess = safeInput("enter row")
-    guess = json.dumps(guess)
+    win = ""
+    s.settimeout(4)
+    try:
+        win = json.loads(s.recv(HEADERSIZE))
+    except socket.error as err:
+        print()
+    s.settimeout(None)
 
-    s.send(bytes(guess, encoding="utf-8"))
+    if (type(win) == bool):
+        if (win == True):
+            print("you win")
+        elif(win == False):
+            print("you lost")
 
-    guess = safeInput("enter colum")
-    guess = json.dumps(guess)
-
-    s.send(bytes(guess, encoding="utf-8"))
-
-    board = json.loads(s.recv(HEADERSIZE))
-    printBoard(board)
+    dumblock = False

@@ -45,28 +45,31 @@ def findPos(row, col):
     return out
 
 class Player:
-    numOfPlayer = 0
-    id = 0
     board = []
     placedShips = False
 
-
     def __init__(self, board):
         self.board = board
-        self.numOfPlayer += 1
-        self.id = self.numOfPlayer
+
 
 
 # game logic
 class Game:
     listOfPlayers = []
+    win = [False, "a", "a"]
 
     def __init__(self, listOfPlayers):
         self.listOfPlayers = listOfPlayers
 
+    def checkWin(self, player, difplayer):
+        if (difplayer.board.count("O") < 1):
+            self.win[0] = True
+            self.win[1] = player
+            self.win[2] = difplayer
+
     def otherPlayer(self, player):
         for i in range(len(self.listOfPlayers)):
-            if(self.listOfPlayers[i] == player):
+            if(self.listOfPlayers[i] != player):
                 return self.listOfPlayers[i]
 
     def placeShip(self, row, col, player, dir):
@@ -88,41 +91,83 @@ class Game:
 
 # send board to client program
 def sendBoard(player, con):
-    sendboard = json.dumps(player.board)
-    con.send(bytes(sendboard, encoding="utf-8"))
+    con.send(bytes(json.dumps(player.board), encoding="utf-8"))
+
+def sendOtherBoard(player, con):
+    sendboard = copy.deepcopy(player.board)
+    for i in range(len(sendboard)):
+        if (sendboard[i] == "O"):
+            sendboard[i] = "."
+    con.send(bytes(json.dumps(sendboard), encoding="utf-8"))
 
 # function that threads uses
 def handleClient(con, game, player):
     while True:
         lock.acquire(blocking=True, timeout=- 1)
+        # gets other player object
         difPlay = game.otherPlayer(player)
 
-        sendBoard(difPlay, con)
+        con.send(bytes(json.dumps(True), encoding="utf-8"))
+
+        # print(f" player id = {player}")
+
+        con.send(bytes(json.dumps(player.board), encoding="utf-8"))
         print(player.board)
         # player places ships
         if (player.placedShips == False):
             print(player.placedShips)
             for a in range(2):
-                print("start")
+                # print("start")
                 p1 = con.recv(HEADERSIZE)
-                print("got row")
+                # print("got row")
                 p2 = con.recv(HEADERSIZE)
-                print("got col")
+                # print("got col")
                 direct = con.recv(HEADERSIZE)
-                print("got dir")
+                # print("got dir")
 
                 game.placeShip(json.loads(p1), json.loads(p2), player, json.loads(direct))
-                sendBoard(player, con)
-                print("one loop")
+                con.send(bytes(json.dumps(player.board), encoding="utf-8"))
+                # print("one loop")
+        else:
+            sendOtherBoard(difPlay, con)
+
+            m1 = json.loads(con.recv(HEADERSIZE))
+            m2 = json.loads(con.recv(HEADERSIZE))
+
+            g1.shoot(int(m1), int(m2), difPlay)
+
+            sendOtherBoard(difPlay, con)
+        # print(difPlay)
+        # print(player)
+
+        # checks if won after first turn
+        if (player.placedShips == True):
+            game.checkWin(player, difPlay)
+            # sends messges to player if they won
+            if (game.win[0] == True):
+                print("end game")
+                if (game.win[1] == player):
+                    con.send(bytes(json.dumps(True), encoding="utf-8"))
+                    lock.release()
+                    break
+                elif(game.win[2] == player):
+                    con.send(bytes(json.dumps(False), encoding="utf-8"))
+                    lock.release()
+                    break
+        #     else:
+        #
+        #         # this is so the client doesn't break
+        #         con.send(bytes(json.dumps(), encoding="utf-8"))
+        # else:
+        #     # this is so the client doesn't break
+        #     con.send(bytes(json.dumps(), encoding="utf-8"))
+
         player.placedShips = True
 
-        m1 = json.loads(con.recv(HEADERSIZE))
-        m2 = json.loads(con.recv(HEADERSIZE))
 
-        g1.shoot(int(m1), int(m2), difPlay)
 
-        sendBoard(difPlay, con)
-
+        while ThreadCount == 1:
+            time.sleep(1)
         lock.release()
         time.sleep(1)
 
@@ -130,18 +175,19 @@ def handleClient(con, game, player):
 while True:
     # creates game and players
     listOfPlayer = []
-    for i in range(2):
-        listOfPlayer.append(Player(copy.deepcopy(map)))
+    listOfPlayer.append(Player(copy.deepcopy(map)))
+    listOfPlayer.append(Player(copy.deepcopy(map)))
+    print(listOfPlayer)
     g1 = Game(listOfPlayer)
     # loop to accept connections
     while True:
         Client, address = sock.accept()
-        ThreadCount += 1
+
         print ('Got connection from', address)
         # puts connection on differnt threads with a differnt player args
-        if (ThreadCount == 1):
+        if (ThreadCount == 0):
             start_new_thread(handleClient, (Client, g1, listOfPlayer[0]))
         else:
             start_new_thread(handleClient, (Client, g1, listOfPlayer[1]))
-
+        ThreadCount += 1
         print('Thread Number: ' + str(ThreadCount))
