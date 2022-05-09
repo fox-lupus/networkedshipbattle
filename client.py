@@ -2,19 +2,15 @@ import socket
 import json
 import time
 
-# Create a socket object
-s = socket.socket()
-  
-# Define the port on which you want to connect
-port = 4200
+s = socket.socket() # Create a socket object
+
+port = 4200 # Define the port on which you want to connect
 
 #something something
 HEADERSIZE = 1024
-  
-# connect to the server on local computer
-s.connect(('localhost', port))
+host = '198.255.236.73'
 
-gameboard = []
+s.connect((host, port)) # connect to the server
 
 def printBoard(br, id):
     print(fr"""
@@ -30,12 +26,13 @@ def printBoard(br, id):
 9 | {br[72]} | {br[73]} | {br[74]} | {br[75]} | {br[76]} | {br[77]} | {br[78]} | {br[79]} | {br[80]} |   \  S  /""")
 
 placedShips = False
+gameboard = []
 
 def findPos(row, col):
     out = ((row - 1) * 9) + col - 1
     return out
 
-def safeInput(prompt):
+def safeInput(prompt): # gets input from user and doesn't crash and only accept correct input
     while True:
         try:
             res = int(input(prompt))
@@ -46,7 +43,7 @@ def safeInput(prompt):
 
     return res
 
-def safeInputchar(prompt):
+def safeInputchar(prompt): # like safeinput but with char
     while True:
             res = input(prompt)
             # print(f"res is {res}")
@@ -54,6 +51,7 @@ def safeInputchar(prompt):
                 res = res.upper()
                 return res
             print("enter N or E")
+
 # def safePlaceShip(board):
 #     while True:
 #
@@ -97,13 +95,12 @@ dumblock = False
 
 while True:
 
-    while dumblock == False:
+    while dumblock == False: # makes sure that the client are syncs
         dumblock = json.loads(s.recv(HEADERSIZE))
-
     getBoard("your", s)
 
     if (placedShips == False):
-        for a in range(2):
+        for a in range(2): # place ships
             print("placeship")
             row = safeInput("enter row")
             col = safeInput("enter colum")
@@ -120,7 +117,7 @@ while True:
 
             getBoard("your", s)
     else:
-        getBoard("other player", s)
+        getBoard("other player", s) # shoot other player board
 
         guess = safeInput("enter row")
         s.send(bytes(json.dumps(guess), encoding="utf-8"))
@@ -134,7 +131,7 @@ while True:
 
     win = json.loads(s.recv(HEADERSIZE))
 
-    if (win == "T"):
+    if (win == "T"): # checks if you won the game
         print("you win")
         break
     elif(win == "F"):

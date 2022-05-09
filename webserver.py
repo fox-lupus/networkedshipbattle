@@ -5,41 +5,32 @@ from threading import Lock
 from _thread import *
 import copy
 
-# stop shit
-lock = Lock()
+lock = Lock() # stop shit
 
-# object socket
-sock = socket.socket()
-host = '127.0.0.1'
+sock = socket.socket() # object socket
+host = '0.0.0.0'
 port = 4200
 HEADERSIZE = 1024
 ThreadCount = 0
 
-# bind the socket to the port
-i = True
-while(i == True):
-    time.sleep(1)
-    try:
-        sock.bind((host, port))
-        print("socket binded to %s" % port)
-        i = False
-    except socket.error as e:
-        print(str(e))
+try: # bind the socket to the port
+    sock.bind((host, port))
+    print("socket binded to %s" % port)
+except socket.error as e:
+    print(str(e))
 
-# starts listening for tcp. the number is the queue
-sock.listen(5)
+sock.listen(5) # starts listening for tcp. the number is the queue
 
-# gobal var
-rowSize = 9
+rowSize = 9 # gobal var
 numOfShips = 2
 
 
-# legend X = hit * = miss . = unknowen :  O = ship
-map = []
+
+map = [] # legend X = hit * = miss . = unknowen :  O = ship
 for _ in range(rowSize ** 2):
     map.append('.')
-# find pos on list from row and colum input
-def findPos(row, col):
+
+def findPos(row, col): # find pos on list from row and colum input
     out = ((row - 1) * rowSize) + col - 1
     print(f"pos from findpos is {out}")
     return out
@@ -51,10 +42,7 @@ class Player:
     def __init__(self, board):
         self.board = board
 
-
-
-# game logic
-class Game:
+class Game: # game logic
     listOfPlayers = []
     win = [False, "", ""]
 
@@ -75,7 +63,7 @@ class Game:
     def placeShip(self, row, col, player, dir):
         if (player.board[findPos(row, col)] != 'O'):
             player.board[findPos(row, col)] = 'O'
-            print("got to place ship")
+            # print("got to place ship")
             if (dir == "N"):
                 player.board[findPos(row - 1, col)] = 'O'
             elif (dir == "E"):
@@ -89,23 +77,20 @@ class Game:
         elif (player.board[findPos(row, col)] == '.'):
             player.board[findPos(row, col)] = '*'
 
-# send board to client program
-def sendBoard(player, con):
+def sendBoard(player, con): # send board to client program
     con.send(bytes(json.dumps(player.board), encoding="utf-8"))
 
-def sendOtherBoard(player, con):
+def sendOtherBoard(player, con): # send board to client program and hides ships
     sendboard = copy.deepcopy(player.board)
     for i in range(len(sendboard)):
         if (sendboard[i] == "O"):
             sendboard[i] = "."
     con.send(bytes(json.dumps(sendboard), encoding="utf-8"))
 
-# function that threads uses
-def handleClient(con, game, player):
+def handleClient(con, game, player): # function that threads uses
     while True:
         lock.acquire(blocking=True, timeout=- 1)
-        # gets other player object
-        difPlay = game.otherPlayer(player)
+        difPlay = game.otherPlayer(player) # gets other player object
         con.send(bytes(json.dumps(True), encoding="utf-8"))
 
         # print(f" player id = {player}")
@@ -144,8 +129,7 @@ def handleClient(con, game, player):
         # checks if won after first turn
         if (player.placedShips == True):
             game.checkWin(player, difPlay)
-            # sends messges to player if they won
-            if (game.win[0] == True):
+            if (game.win[0] == True): # sends messges to player if they won
                 print("end game")
                 if (game.win[1] == player):
                     con.send(bytes(json.dumps("T"), encoding="utf-8"))
@@ -156,12 +140,9 @@ def handleClient(con, game, player):
                     lock.release()
                     break
             else:
-
-                # this is so the client doesn't break
-                con.send(bytes(json.dumps("S"), encoding="utf-8"))
+                con.send(bytes(json.dumps("S"), encoding="utf-8")) # this is so the client doesn't break
         else:
-            # this is so the client doesn't break
-            con.send(bytes(json.dumps("S"), encoding="utf-8"))
+            con.send(bytes(json.dumps("S"), encoding="utf-8")) # this is so the client doesn't break
 
         player.placedShips = True
 
@@ -172,16 +153,15 @@ def handleClient(con, game, player):
         lock.release()
         time.sleep(1)
 
-# main loop
-while True:
+while True: # main loop
     # creates game and players
     listOfPlayer = []
     listOfPlayer.append(Player(copy.deepcopy(map)))
     listOfPlayer.append(Player(copy.deepcopy(map)))
     print(listOfPlayer)
     g1 = Game(listOfPlayer)
-    # loop to accept connections
-    while True:
+
+    while True: # loop to accept connections
         Client, address = sock.accept()
 
         print ('Got connection from', address)
