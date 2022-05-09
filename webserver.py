@@ -56,7 +56,7 @@ class Player:
 # game logic
 class Game:
     listOfPlayers = []
-    win = [False, "a", "a"]
+    win = [False, "", ""]
 
     def __init__(self, listOfPlayers):
         self.listOfPlayers = listOfPlayers
@@ -106,7 +106,6 @@ def handleClient(con, game, player):
         lock.acquire(blocking=True, timeout=- 1)
         # gets other player object
         difPlay = game.otherPlayer(player)
-
         con.send(bytes(json.dumps(True), encoding="utf-8"))
 
         # print(f" player id = {player}")
@@ -140,6 +139,8 @@ def handleClient(con, game, player):
         # print(difPlay)
         # print(player)
 
+        time.sleep(1)
+
         # checks if won after first turn
         if (player.placedShips == True):
             game.checkWin(player, difPlay)
@@ -147,20 +148,20 @@ def handleClient(con, game, player):
             if (game.win[0] == True):
                 print("end game")
                 if (game.win[1] == player):
-                    con.send(bytes(json.dumps(True), encoding="utf-8"))
+                    con.send(bytes(json.dumps("T"), encoding="utf-8"))
                     lock.release()
                     break
                 elif(game.win[2] == player):
-                    con.send(bytes(json.dumps(False), encoding="utf-8"))
+                    con.send(bytes(json.dumps("F"), encoding="utf-8"))
                     lock.release()
                     break
-        #     else:
-        #
-        #         # this is so the client doesn't break
-        #         con.send(bytes(json.dumps(), encoding="utf-8"))
-        # else:
-        #     # this is so the client doesn't break
-        #     con.send(bytes(json.dumps(), encoding="utf-8"))
+            else:
+
+                # this is so the client doesn't break
+                con.send(bytes(json.dumps("S"), encoding="utf-8"))
+        else:
+            # this is so the client doesn't break
+            con.send(bytes(json.dumps("S"), encoding="utf-8"))
 
         player.placedShips = True
 
@@ -187,6 +188,8 @@ while True:
         # puts connection on differnt threads with a differnt player args
         if (ThreadCount == 0):
             start_new_thread(handleClient, (Client, g1, listOfPlayer[0]))
+        elif(ThreadCount > 2):
+            break
         else:
             start_new_thread(handleClient, (Client, g1, listOfPlayer[1]))
         ThreadCount += 1

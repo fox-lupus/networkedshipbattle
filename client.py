@@ -132,18 +132,13 @@ while True:
 
     placedShips = True
 
-    win = ""
-    s.settimeout(4)
-    try:
-        win = json.loads(s.recv(HEADERSIZE))
-    except socket.error as err:
-        print()
-    s.settimeout(None)
+    win = json.loads(s.recv(HEADERSIZE))
 
-    if (type(win) == bool):
-        if (win == True):
-            print("you win")
-        elif(win == False):
-            print("you lost")
+    if (win == "T"):
+        print("you win")
+        break
+    elif(win == "F"):
+        print("you lost")
+        break
 
     dumblock = False
