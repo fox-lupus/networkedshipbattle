@@ -5,28 +5,26 @@ from threading import Lock
 from _thread import *
 import copy
 
-lock = Lock() # stop shit
+lock = Lock()  # stop shit
 
-sock = socket.socket() # object socket
-host = '0.0.0.0'
-port = 4200
-HEADERSIZE = 1024
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # object socket
+host = 'localhost'
+port = 420
+HEADERSIZE = 2048
 ThreadCount = 0
 
-try: # bind the socket to the port
-    sock.bind((host, port))
-    print("socket binded to %s" % port)
-except socket.error as e:
-    print(str(e))
+# bind the socket to the port
+sock.bind((host, port))
+print("socket bound to %s" % port)
 
-sock.listen(5) # starts listening for tcp. the number is the queue
+sock.listen(5)  # starts listening for tcp. the number is the queue
 
-rowSize = 9 # gobal var
+rowSize = 9  # global var
 numOfShips = 2
 
 
 
-map = [] # legend X = hit * = miss . = unknowen :  O = ship
+map = []  # legend X = hit * = miss . = unknowen :  O = ship
 for _ in range(rowSize ** 2):
     map.append('.')
 
@@ -42,7 +40,7 @@ class Player:
     def __init__(self, board):
         self.board = board
 
-class Game: # game logic
+class Game:  # game logic
     listOfPlayers = []
     win = [False, "", ""]
 
@@ -77,39 +75,35 @@ class Game: # game logic
         elif (player.board[findPos(row, col)] == '.'):
             player.board[findPos(row, col)] = '*'
 
-def sendBoard(player, con): # send board to client program
+def sendBoard(player, con):  # send board to client program
     con.send(bytes(json.dumps(player.board), encoding="utf-8"))
 
-def sendOtherBoard(player, con): # send board to client program and hides ships
+def sendOtherBoard(player, con):  # send board to client program and hides ships
     sendboard = copy.deepcopy(player.board)
     for i in range(len(sendboard)):
         if (sendboard[i] == "O"):
             sendboard[i] = "."
     con.send(bytes(json.dumps(sendboard), encoding="utf-8"))
 
-def handleClient(con, game, player): # function that threads uses
+# function that threads uses
+def handleClient(con, game, player):
     while True:
         lock.acquire(blocking=True, timeout=- 1)
         difPlay = game.otherPlayer(player) # gets other player object
+
         con.send(bytes(json.dumps(True), encoding="utf-8"))
 
         # print(f" player id = {player}")
-
+        time.sleep(.25)
         con.send(bytes(json.dumps(player.board), encoding="utf-8"))
         print(player.board)
         # player places ships
         if (player.placedShips == False):
             print(player.placedShips)
             for a in range(2):
-                # print("start")
-                p1 = con.recv(HEADERSIZE)
-                # print("got row")
-                p2 = con.recv(HEADERSIZE)
-                # print("got col")
-                direct = con.recv(HEADERSIZE)
-                # print("got dir")
+                inlist = con.recv(HEADERSIZE)
 
-                game.placeShip(json.loads(p1), json.loads(p2), player, json.loads(direct))
+                game.placeShip(inlist[0], inlist[1], player, inlist[3])
                 con.send(bytes(json.dumps(player.board), encoding="utf-8"))
                 # print("one loop")
         else:
@@ -161,7 +155,8 @@ while True: # main loop
     print(listOfPlayer)
     g1 = Game(listOfPlayer)
 
-    while True: # loop to accept connections
+    # loop to accept connections
+    while True:
         Client, address = sock.accept()
 
         print ('Got connection from', address)
