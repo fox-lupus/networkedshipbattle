@@ -1,13 +1,29 @@
 import socket
 import json
 import time
+# import dearpygui.dearpygui as dpg
+
+# GUI nonsense
+# dpg.create_context()
+# dpg.create_viewport(title='Custom Title', width=600, height=300)
+#
+# with dpg.window(label="Example Window"):
+#     dpg.add_text("Hello, world")
+#     dpg.add_button(label="Save")
+#     dpg.add_input_text(label="string", default_value="Quick brown fox")
+#     dpg.add_slider_float(label="float", default_value=0.273, max_value=1)
+#
+# dpg.setup_dearpygui()
+# dpg.show_viewport()
+# dpg.start_dearpygui()
+# dpg.destroy_context()
 
 s = socket.socket() # Create a socket object
 
 port = 420 # Define the port on which you want to connect
 
 #something something
-HEADERSIZE = 2048
+HEADERSIZE = 1024
 host = 'localhost'
 
 s.connect((host, port)) # connect to the server
@@ -48,13 +64,16 @@ def safeInputrow(prompt): # gets input from user and doesn't crash and only acce
     while True:
         try:
             res = input(prompt)
-            res = ord(res) - 96
-            if (res > -1 and res < 10):
+            try:
+                out = ord(res) - 96
+            except:
+                print("only one char")
+                out = 10
+            if (out >= 1 and out <= 9):
                 break
         except ValueError:
-            print("enter Number")
-
-    return res
+            print("lower case letter")
+    return out
 
 def safeInputchar(prompt): # like safeinput but with char
     while True:
@@ -69,18 +88,23 @@ def getBoard(id, sd):
     time.sleep(.25)
     board = sd.recv(HEADERSIZE)
     print(board)
-    board = json.loads(board)
-
+    try:
+        board = json.loads(board)
+    except:
+        print("json failed to load")
     printBoard(board, id)
 
 while True:
 
-    while dumblock == False: # makes sure that the client are syncs
-        time.sleep(1)
-        print("waiting for other player to connect")
-        out = s.recv(HEADERSIZE)
-        print(out)
-        dumblock = json.loads(out)
+    # while dumblock == False: # makes sure that the client are syncs
+    #     time.sleep(1)
+    #     print("waiting for other player")
+    #     try:
+    #         out = s.recv(HEADERSIZE)
+    #     except:
+    #         print("failed")
+    #     print(out)
+    #     dumblock = json.loads(out)
 
     getBoard("your", s)
 
@@ -100,14 +124,13 @@ while True:
         time.sleep(.25)
         getBoard("other player", s) # shoot other player board
 
-        guess = safeInputrow("enter row")
-        s.send(bytes(json.dumps(guess), encoding="utf-8"))
+        guess1 = safeInputrow("enter row")
+        guess2 = safeInput("enter colum")
 
-        guess = safeInput("enter colum")
-        s.send(bytes(json.dumps(guess), encoding="utf-8"))
+        moves = [guess1, guess2]
+        s.send(bytes(json.dumps(moves), encoding="utf-8"))
 
         time.sleep(.25)
-        getBoard("other player", s)
 
     placedShips = True
 
@@ -122,4 +145,4 @@ while True:
         time.sleep(20)
         break
 
-    dumblock = False
+    # dumblock = False

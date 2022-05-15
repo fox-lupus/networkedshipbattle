@@ -10,7 +10,7 @@ lock = Lock()  # stop shit
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # object socket
 host = 'localhost'
 port = 420
-HEADERSIZE = 2048
+HEADERSIZE = 1024
 ThreadCount = 0
 
 # bind the socket to the port
@@ -21,8 +21,6 @@ sock.listen(5)  # starts listening for tcp. the number is the queue
 
 rowSize = 9  # global var
 numOfShips = 2
-
-
 
 map = []  # legend X = hit * = miss . = unknowen :  O = ship
 for _ in range(rowSize ** 2):
@@ -63,9 +61,18 @@ class Game:  # game logic
             player.board[findPos(row, col)] = 'O'
             # print("got to place ship")
             if (dir == "N"):
-                player.board[findPos(row - 1, col)] = 'O'
+                try:
+                    player.board[findPos(row + 1, col)] = 'O'
+                except:
+                    print("index out of range")
+                    player.board[findPos(row - 1 , col)] = 'O'
+
             elif (dir == "E"):
-                player.board[findPos(row, col + 1)] = 'O'
+                try:
+                    player.board[findPos(row, col + 1)] = 'O'
+                except:
+                    print("index out of range")
+                    player.board[findPos(row, col - 1)] = 'O'
         else:
             print("aready ship taken error")
 
@@ -91,34 +98,42 @@ def handleClient(con, game, player):
         lock.acquire(blocking=True, timeout=- 1)
         difPlay = game.otherPlayer(player) # gets other player object
 
-        con.send(bytes(json.dumps(True), encoding="utf-8"))
+        # con.send(bytes(json.dumps(True), encoding="utf-8"))
 
         # print(f" player id = {player}")
-        time.sleep(.25)
+        time.sleep(1)
         con.send(bytes(json.dumps(player.board), encoding="utf-8"))
         print(player.board)
+        time.sleep(1)
         # player places ships
         if (player.placedShips == False):
             print(player.placedShips)
             for a in range(2):
                 inlist = con.recv(HEADERSIZE)
+                try:
+                    inlist =  json.loads(inlist)
+                except:
+                    print("failed to dump json")
+                print(inlist)
+                time.sleep(1)
 
-                game.placeShip(inlist[0], inlist[1], player, inlist[3])
+                game.placeShip(inlist[0], inlist[1], player, inlist[2])
                 con.send(bytes(json.dumps(player.board), encoding="utf-8"))
+                time.sleep(1)
                 # print("one loop")
         else:
             sendOtherBoard(difPlay, con)
+            time.sleep(1)
+            try:
+                moves = json.loads(con.recv(HEADERSIZE))
+            except:
+                print("failed to load")
+                moves = [1,1]
+            time.sleep(1)
+            g1.shoot(moves[0], moves[1], difPlay)
 
-            m1 = json.loads(con.recv(HEADERSIZE))
-            m2 = json.loads(con.recv(HEADERSIZE))
-
-            g1.shoot(int(m1), int(m2), difPlay)
-
-            sendOtherBoard(difPlay, con)
         # print(difPlay)
-        # print(player)
-
-        time.sleep(1)
+        # print(player)1
 
         # checks if won after first turn
         if (player.placedShips == True):
@@ -139,8 +154,6 @@ def handleClient(con, game, player):
             con.send(bytes(json.dumps("S"), encoding="utf-8")) # this is so the client doesn't break
 
         player.placedShips = True
-
-
 
         while ThreadCount == 1:
             time.sleep(1)
